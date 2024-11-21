@@ -1,0 +1,82 @@
+public void populatePLSFromXML(Document document) {
+    Map<String, FuturesData> futuresMap = new HashMap<>();
+
+    // First Pass: Process all SwapCurves
+    NodeList nodes = document.getDocumentElement().getChildNodes();
+    for (int i = 0; i < nodes.getLength(); i++) {
+        Node node = nodes.item(i);
+        if (node.getNodeType() == Node.ELEMENT_NODE && "SwapCurve".equals(node.getNodeName())) {
+            Element swapCurve = (Element) node;
+            String rateFixingIndex = swapCurve.getAttribute("rateFixingIndex");
+
+            // Skip if rateFixingIndex is "exotic"
+            if ("exotic".equalsIgnoreCase(rateFixingIndex)) {
+                continue;
+            }
+
+            String ccy = swapCurve.getAttribute("ccy");
+
+            // Check for FuturesChain children
+            NodeList childNodes = swapCurve.getChildNodes();
+            for (int j = 0; j < childNodes.getLength(); j++) {
+                Node childNode = childNodes.item(j);
+                if (childNode.getNodeType() == Node.ELEMENT_NODE && "FuturesChain".equals(childNode.getNodeName())) {
+                    Element futuresChain = (Element) childNode;
+                    String contract = futuresChain.getAttribute("contract");
+
+                    // Store contract, ccy, and rateFixingIndex
+                    futuresMap.put(contract, new FuturesData(ccy, rateFixingIndex));
+                }
+            }
+        }
+    }
+
+    // Second Pass: Process individual FuturesChains
+    for (int i = 0; i < nodes.getLength(); i++) {
+        Node node = nodes.item(i);
+        if (node.getNodeType() == Node.ELEMENT_NODE && "FuturesChain".equals(node.getNodeName())) {
+            Element futuresChain = (Element) node;
+
+            // Check if this FuturesChain is standalone (not within SwapCurve)
+            if (node.getParentNode().getNodeName().equals("SwapCurve")) {
+                continue; // Skip FuturesChain inside SwapCurve
+            }
+
+            String contract = futuresChain.getAttribute("contract");
+            FuturesData futuresData = futuresMap.get(contract);
+
+            if (futuresData != null) {
+                String ccy = futuresData.getCcy();
+                String rateFixingIndex = futuresData.getRateFixingIndex();
+
+                // Process quotes
+                NodeList quoteNodes = futuresChain.getElementsByTagName("Quote");
+                for (int j = 0; j < quoteNodes.getLength(); j++) {
+                    Element quote = (Element) quoteNodes.item(j);
+                    String midRate = quote.getAttribute("midRate");
+                    String startDate = quote.getAttribute("startDate");
+
+                    // Store or process the extracted data
+                    saveToPLS(ccy, rateFixingIndex, contract, midRate, startDate);
+                }
+            }
+        }
+    }
+}
+
+
+
+
+class FuturesData {
+    private String ccy;
+    private String rateFixingIndex;
+
+    public FuturesData(String ccy, String rateFixingIndex) {
+        this.ccy = ccy;
+        this.rateFixingIndex = rateFixingIndex;
+    }
+
+    // Getters and setters
+    public String getCcy() { return ccy; }
+    public String getRateFixingIndex() { return rateFixingIndex; }
+}
