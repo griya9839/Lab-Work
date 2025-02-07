@@ -35,3 +35,11 @@ int main()
         cout<<"Total pairs : "<<c<<endl;
      }
 }
+
+
+
+
+
+String cobDateString = snapUUID.replaceAll("^.+@", "");
+String assetClass = snapUUID.replaceAll("^.*?-", "").replaceAll("@.+$", "");
+String site = snapUUID.replaceAll("-.*$", "");
